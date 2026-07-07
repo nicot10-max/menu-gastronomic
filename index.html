@@ -1811,7 +1811,7 @@ function onPromoOverlayClick(e) {
 async function applyConfig() {
   let d = {};
   try {
-    const res = await fetch('api.php');
+    const res = await fetch('api/menu');
     if (res.ok) d = await res.json();
   } catch(e) { /* sin servidor: usa defaults */ }
 
