@@ -1,12 +1,7 @@
-import { Redis } from '@upstash/redis';
+import { kv } from '@vercel/kv';
 
 const SECRET = '159';
 const KV_KEY = 'pb_data';
-
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,7 +11,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const data = (await redis.get(KV_KEY)) || {};
+    const data = (await kv.get(KV_KEY)) || {};
     return res.status(200).json(data);
   }
 
@@ -33,25 +28,25 @@ export default async function handler(req, res) {
   const action = body.action || 'save';
 
   if (action === 'save') {
-    await redis.set(KV_KEY, body.data || {});
+    await kv.set(KV_KEY, body.data || {});
     return res.status(200).json({ ok: true });
   }
 
   if (action === 'upload_photo') {
     const id = (body.id || 'photo').replace(/[^a-z0-9\-_]/g, '');
     const imageData = body.imageData || '';
-    const data = (await redis.get(KV_KEY)) || {};
+    const data = (await kv.get(KV_KEY)) || {};
     if (!data.photos) data.photos = {};
     data.photos[id] = imageData;
-    await redis.set(KV_KEY, data);
+    await kv.set(KV_KEY, data);
     return res.status(200).json({ url: imageData });
   }
 
   if (action === 'delete_photo') {
     const id = (body.id || '').replace(/[^a-z0-9\-_]/g, '');
-    const data = (await redis.get(KV_KEY)) || {};
+    const data = (await kv.get(KV_KEY)) || {};
     if (data.photos) delete data.photos[id];
-    await redis.set(KV_KEY, data);
+    await kv.set(KV_KEY, data);
     return res.status(200).json({ ok: true });
   }
 
