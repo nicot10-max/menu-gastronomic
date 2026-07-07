@@ -1,7 +1,29 @@
-import { kv } from '@vercel/kv';
-
 const SECRET = '159';
 const KV_KEY = 'pb_data';
+const KV_URL   = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+
+async function dbGet(key) {
+  const res = await fetch(`${KV_URL}/get/${key}`, {
+    headers: { Authorization: `Bearer ${KV_TOKEN}` }
+  });
+  if (!res.ok) throw new Error(`GET ${res.status}`);
+  const { result } = await res.json();
+  if (result == null) return null;
+  try { return JSON.parse(result); } catch { return result; }
+}
+
+async function dbSet(key, value) {
+  const res = await fetch(`${KV_URL}/pipeline`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${KV_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify([['SET', key, JSON.stringify(value)]])
+  });
+  if (!res.ok) throw new Error(`SET ${res.status}`);
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,8 +33,12 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
-    const data = (await kv.get(KV_KEY)) || {};
-    return res.status(200).json(data);
+    try {
+      const data = (await dbGet(KV_KEY)) || {};
+      return res.status(200).json(data);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
   }
 
   if (req.method !== 'POST') {
@@ -20,35 +46,37 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-
   if (!body || body.key !== SECRET) {
     return res.status(403).json({ error: 'No autorizado' });
   }
 
   const action = body.action || 'save';
 
-  if (action === 'save') {
-    await kv.set(KV_KEY, body.data || {});
-    return res.status(200).json({ ok: true });
-  }
+  try {
+    if (action === 'save') {
+      await dbSet(KV_KEY, body.data || {});
+      return res.status(200).json({ ok: true });
+    }
 
-  if (action === 'upload_photo') {
-    const id = (body.id || 'photo').replace(/[^a-z0-9\-_]/g, '');
-    const imageData = body.imageData || '';
-    const data = (await kv.get(KV_KEY)) || {};
-    if (!data.photos) data.photos = {};
-    data.photos[id] = imageData;
-    await kv.set(KV_KEY, data);
-    return res.status(200).json({ url: imageData });
-  }
+    if (action === 'upload_photo') {
+      const id = (body.id || 'photo').replace(/[^a-z0-9\-_]/g, '');
+      const data = (await dbGet(KV_KEY)) || {};
+      if (!data.photos) data.photos = {};
+      data.photos[id] = body.imageData || '';
+      await dbSet(KV_KEY, data);
+      return res.status(200).json({ url: body.imageData });
+    }
 
-  if (action === 'delete_photo') {
-    const id = (body.id || '').replace(/[^a-z0-9\-_]/g, '');
-    const data = (await kv.get(KV_KEY)) || {};
-    if (data.photos) delete data.photos[id];
-    await kv.set(KV_KEY, data);
-    return res.status(200).json({ ok: true });
-  }
+    if (action === 'delete_photo') {
+      const id = (body.id || '').replace(/[^a-z0-9\-_]/g, '');
+      const data = (await dbGet(KV_KEY)) || {};
+      if (data.photos) delete data.photos[id];
+      await dbSet(KV_KEY, data);
+      return res.status(200).json({ ok: true });
+    }
 
-  return res.status(400).json({ error: 'Acción no reconocida' });
+    return res.status(400).json({ error: 'Acción no reconocida' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 }
