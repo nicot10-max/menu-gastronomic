@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · Perro Burguer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:     #0f0f11;
+      --bg2:    #161618;
+      --bg3:    #1e1e21;
+      --bg4:    #252529;
+      --cream:  #f4ead4;
+      --cream2: #9d9488;
+      --cream3: #5a5450;
+      --orange: #f28a4c;
+      --orange2:#c96e35;
+      --border: rgba(255,255,255,.07);
+      --red:    #e05555;
+      --green:  #4caf7d;
+      --radius: 12px;
+      --rsm:    8px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--cream);
+      font-family: 'Outfit', sans-serif; font-weight: 400;
+      min-height: 100dvh; -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── PIN screen ── */
+    #pinScreen {
+      min-height: 100dvh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px; gap: 32px;
+    }
+    .pin-logo {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: var(--orange);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Outfit', sans-serif; font-weight: 700;
+      font-size: 20px; color: #1a0e00;
+    }
+    .pin-title { font-size: 22px; font-weight: 700; text-align: center; }
+    .pin-sub   { font-size: 14px; color: var(--cream2); text-align: center; margin-top: 4px; }
+    .pin-dots {
+      display: flex; gap: 12px;
+    }
+    .pin-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid var(--cream3);
+      transition: background .15s, border-color .15s;
+    }
+    .pin-dot.filled { background: var(--orange); border-color: var(--orange); }
+    .pin-pad {
+      display: grid; grid-template-columns: repeat(3, 72px);
+      gap: 10px;
+    }
+    .pin-btn {
+      height: 72px; border-radius: var(--radius);
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--cream); font-family: 'Outfit', sans-serif;
+      font-size: 22px; font-weight: 500;
+      cursor: pointer; transition: background .15s, transform .1s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pin-btn:hover  { background: var(--bg4); }
+    .pin-btn:active { transform: scale(0.94); }
+    .pin-btn.del    { font-size: 18px; color: var(--cream2); }
+    .pin-btn.zero   { grid-column: 2; }
+    .pin-error {
+      font-size: 13px; color: var(--red);
+      height: 18px; text-align: center;
+    }
+
+    /* ── Admin layout ── */
+    #adminPanel { display: none; }
+
+    header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(15,15,17,.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-badge {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--orange);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px; color: #1a0e00;
+    }
+    .header-title { font-size: 16px; font-weight: 700; }
+    .header-sub   { font-size: 11px; color: var(--cream2); margin-top: 1px; }
+    .logout-btn {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--rsm); color: var(--cream2);
+      font-family: 'Outfit', sans-serif; font-size: 13px;
+      padding: 7px 14px; cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .logout-btn:hover { border-color: rgba(255,255,255,.15); color: var(--cream); }
+
+    /* ── Tabs ── */
+    .tabs {
+      position: sticky; top: 60px; z-index: 40;
+      background: rgba(15,15,17,.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex; overflow-x: auto; scrollbar-width: none;
+      padding: 0 4px;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex-shrink: 0; background: none; border: none;
+      color: var(--cream2); font-family: 'Outfit', sans-serif;
+      font-size: 13px; font-weight: 500;
+      padding: 14px 18px 12px; cursor: pointer;
+      position: relative; transition: color .15s;
+      white-space: nowrap;
+    }
+    .tab::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 18px; right: 18px; height: 2px;
+      background: var(--orange);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform .2s;
+    }
+    .tab.active { color: var(--cream); }
+    .tab.active::after { transform: scaleX(1); }
+
+    /* ── Content ── */
+    .content { max-width: 680px; margin: 0 auto; padding: 0 16px 80px; }
+
+    .section { display: none; padding-top: 28px; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 18px; font-weight: 700; margin-bottom: 20px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 13px; font-weight: 600; color: var(--cream2);
+      letter-spacing: 0.5px; text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    /* ── Form fields ── */
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      font-size: 12px; font-weight: 600; color: var(--cream2);
+      letter-spacing: 0.3px;
+    }
+    .field input, .field textarea, .field select {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--rsm); color: var(--cream);
+      font-family: 'Outfit', sans-serif; font-size: 14px;
+      padding: 11px 14px; width: 100%; outline: none;
+      transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--cream3); }
+    .field input:focus,
+    .field textarea:focus { border-color: rgba(242,138,76,.5); }
+    .field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field-hint { font-size: 11px; color: var(--cream3); margin-top: 2px; }
+
+    /* ── Toggle ── */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 0; margin-bottom: 14px;
+    }
+    .toggle-label { font-size: 14px; font-weight: 500; }
+    .toggle-sub   { font-size: 12px; color: var(--cream2); margin-top: 2px; }
+    .toggle {
+      width: 44px; height: 26px; border-radius: 13px;
+      background: var(--bg4); border: 1px solid var(--border);
+      cursor: pointer; position: relative;
+      transition: background .2s, border-color .2s;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--orange); border-color: var(--orange); }
+    .toggle::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff;
+      transition: transform .2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    }
+    .toggle.on::after { transform: translateX(18px); }
+
+    /* ── Menu product rows ── */
+    .product-row {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .product-row-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer;
+      transition: background .15s;
+    }
+    .product-row-header:hover { background: var(--bg3); }
+    .product-row-icon { font-size: 22px; flex-shrink: 0; }
+    .product-row-info { flex: 1; min-width: 0; }
+    .product-row-name {
+      font-size: 14px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .product-row-price { font-size: 12px; color: var(--orange); margin-top: 2px; }
+    .product-row-chevron {
+      color: var(--cream3); font-size: 12px;
+      transition: transform .2s; flex-shrink: 0;
+    }
+    .product-row.open .product-row-chevron { transform: rotate(180deg); }
+    .product-row-body {
+      display: none; padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .product-row.open .product-row-body { display: block; }
+
+    /* ── Image upload ── */
+    .img-upload {
+      width: 100%; height: 150px;
+      background: var(--bg3); border: 2px dashed var(--border);
+      border-radius: var(--rsm); cursor: pointer;
+      background-size: cover; background-position: center;
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .2s;
+    }
+    .img-upload:hover { border-color: rgba(242,138,76,.45); }
+    .img-upload.has-img { border-style: solid; border-color: transparent; }
+    .img-upload-label {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; color: var(--cream3); pointer-events: none;
+    }
+    .img-upload-label svg { opacity: .5; }
+    .img-upload-label span { font-size: 12px; }
+    .img-upload-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.6);
+      display: flex; gap: 8px; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .2s;
+    }
+    .img-upload:hover .img-upload-overlay { opacity: 1; }
+    .img-act-btn {
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2);
+      border-radius: 6px; color: #fff; font-family: 'Outfit', sans-serif;
+      font-size: 12px; font-weight: 500; padding: 7px 14px; cursor: pointer;
+      transition: background .15s;
+    }
+    .img-act-btn:hover { background: rgba(255,255,255,.28); }
+    .img-act-btn.del   { color: #ff8080; }
+
+    /* ── Add buttons row ── */
+    .add-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-bottom: 16px;
+    }
+    .add-row-btn {
+      height: 42px; border-radius: var(--rsm);
+      background: var(--bg3); border: 1px dashed rgba(242,138,76,.4);
+      color: var(--orange); font-family: 'Outfit', sans-serif;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: background .15s, border-color .15s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .add-row-btn:hover { background: var(--bg4); border-color: var(--orange); }
+
+    /* ── Add form card ── */
+    .add-form {
+      background: var(--bg2); border: 1px solid rgba(242,138,76,.2);
+      border-radius: var(--radius); padding: 18px;
+      margin-bottom: 16px; animation: slideDown .2s ease;
+    }
+    @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .add-form-title {
+      font-size: 13px; font-weight: 700; color: var(--orange);
+      letter-spacing: .5px; text-transform: uppercase; margin-bottom: 14px;
+    }
+    .add-form-actions {
+      display: flex; gap: 8px; margin-top: 14px;
+    }
+    .add-form-submit {
+      flex: 1; height: 40px; border-radius: var(--rsm);
+      background: var(--orange); border: none;
+      color: #1a0e00; font-family: 'Outfit', sans-serif;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: background .15s;
+    }
+    .add-form-submit:hover { background: var(--orange2); }
+    .add-form-cancel {
+      height: 40px; border-radius: var(--rsm);
+      background: transparent; border: 1px solid var(--border);
+      color: var(--cream2); font-family: 'Outfit', sans-serif;
+      font-size: 14px; padding: 0 16px; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .add-form-cancel:hover { border-color: rgba(255,255,255,.2); }
+
+    /* ── Delete button on custom rows ── */
+    .product-row-del {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: transparent; border: 1px solid rgba(224,85,85,.3);
+      color: var(--red); font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s; flex-shrink: 0;
+    }
+    .product-row-del:hover { background: rgba(224,85,85,.15); }
+    .custom-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--orange);
+      background: rgba(242,138,76,.12); border: 1px solid rgba(242,138,76,.2);
+      border-radius: 4px; padding: 2px 5px; margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── Category label ── */
+    .cat-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--orange);
+      padding: 20px 0 8px;
+    }
+
+    /* ── Save bar ── */
+    .save-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: var(--bg2); border-top: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex; gap: 10px; align-items: center;
+      max-width: 680px; margin: 0 auto;
+    }
+    .save-btn {
+      flex: 1; height: 46px; border-radius: var(--rsm);
+      background: var(--orange); border: none;
+      color: #1a0e00; font-family: 'Outfit', sans-serif;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background .15s;
+    }
+    .save-btn:hover { background: var(--orange2); }
+    .preview-btn {
+      height: 46px; border-radius: var(--rsm);
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--cream2); font-family: 'Outfit', sans-serif;
+      font-size: 14px; font-weight: 500;
+      padding: 0 18px; cursor: pointer;
+      transition: border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .preview-btn:hover { border-color: rgba(255,255,255,.2); color: var(--cream); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 78px; left: 50%; z-index: 200;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--bg3); border: 1px solid rgba(255,255,255,.12);
+      border-radius: var(--rsm); color: var(--cream);
+      font-size: 13px; font-weight: 500;
+      padding: 10px 18px; opacity: 0;
+      transition: all .2s; pointer-events: none;
+      white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- PIN screen -->
+<div id="pinScreen">
+  <div class="pin-logo">PB</div>
+  <div>
+    <div class="pin-title">Panel de administración</div>
+    <div class="pin-sub">Ingresá tu PIN para continuar</div>
+  </div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinKey('1')">1</button>
+    <button class="pin-btn" onclick="pinKey('2')">2</button>
+    <button class="pin-btn" onclick="pinKey('3')">3</button>
+    <button class="pin-btn" onclick="pinKey('4')">4</button>
+    <button class="pin-btn" onclick="pinKey('5')">5</button>
+    <button class="pin-btn" onclick="pinKey('6')">6</button>
+    <button class="pin-btn" onclick="pinKey('7')">7</button>
+    <button class="pin-btn" onclick="pinKey('8')">8</button>
+    <button class="pin-btn" onclick="pinKey('9')">9</button>
+    <button class="pin-btn zero" onclick="pinKey('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+  </div>
+</div>
+
+<!-- Admin panel -->
+<div id="adminPanel">
+
+  <header>
+    <div class="header-left">
+      <div class="header-badge">PB</div>
+      <div>
+        <div class="header-title">Panel Admin</div>
+        <div class="header-sub">Perro Burguer</div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Salir</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" onclick="switchTab('local')">Local</button>
+    <button class="tab" onclick="switchTab('promo')">Promoción</button>
+    <button class="tab" onclick="switchTab('menu')">Menú</button>
+    <button class="tab" onclick="switchTab('pin')">PIN</button>
+  </nav>
+
+  <div class="content">
+
+    <!-- TAB: Local -->
+    <div class="section active" id="tab-local">
+      <div class="section-title">Datos del local</div>
+
+      <div class="card">
+        <div class="card-title">Identidad</div>
+        <div class="field">
+          <label>Nombre del negocio</label>
+          <input type="text" id="cfg-name" placeholder="Perro Burguer">
+        </div>
+        <div class="field">
+          <label>Slogan / descripción corta</label>
+          <input type="text" id="cfg-tagline" placeholder="Hamburguesería artesanal · Salta">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Contacto y ubicación</div>
+        <div class="field">
+          <label>Número de WhatsApp</label>
+          <input type="tel" id="cfg-whatsapp" placeholder="543875290535">
+          <span class="field-hint">Sin espacios ni guiones. Incluir código de país (54 para Argentina).</span>
+        </div>
+        <div class="field">
+          <label>Dirección</label>
+          <input type="text" id="cfg-address" placeholder="Av. del Bicentenario 1234, Salta Capital">
+        </div>
+        <div class="field">
+          <label>Horario</label>
+          <input type="text" id="cfg-hours" placeholder="Mar a Dom · 19:30 a 00:30">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Delivery</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Costo de envío ($)</label>
+            <input type="number" id="cfg-delivery" placeholder="1500">
+          </div>
+          <div class="field">
+            <label>Pedido mínimo ($)</label>
+            <input type="number" id="cfg-minorder" placeholder="5000">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Transferencia bancaria</div>
+        <div class="field">
+          <label>CBU / CVU</label>
+          <input type="text" id="cfg-cbu" placeholder="0000003100012345678901">
+        </div>
+        <div class="field">
+          <label>Titular de la cuenta</label>
+          <input type="text" id="cfg-cbuname" placeholder="Perro Burguer S.R.L.">
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Promoción -->
+    <div class="section" id="tab-promo">
+      <div class="section-title">Popup de promoción</div>
+
+      <div class="card">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Mostrar popup al abrir</div>
+            <div class="toggle-sub">Si está activo aparece automáticamente al entrar al menú</div>
+          </div>
+          <div class="toggle" id="promoToggle" onclick="togglePromo()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Contenido</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Emoji</label>
+            <input type="text" id="promo-emoji" placeholder="🔥" maxlength="4">
+          </div>
+          <div class="field">
+            <label>Etiqueta (ej: Promo de hoy)</label>
+            <input type="text" id="promo-label" placeholder="Promo de hoy">
+          </div>
+        </div>
+        <div class="field">
+          <label>Título principal</label>
+          <input type="text" id="promo-title" placeholder="2x1 en papas">
+        </div>
+        <div class="field">
+          <label>Descripción</label>
+          <textarea id="promo-desc" placeholder="Pedí cualquier porción de papas y la segunda te sale gratis..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Precio destacado</label>
+            <input type="text" id="promo-price" placeholder="$ 4.200">
+          </div>
+          <div class="field">
+            <label>Texto bajo el precio</label>
+            <input type="text" id="promo-pricelabel" placeholder="pagás una, llevás dos">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Texto del botón CTA</label>
+            <input type="text" id="promo-cta" placeholder="Ver papas">
+          </div>
+          <div class="field">
+            <label>Sección que abre el CTA</label>
+            <select id="promo-ctasection">
+              <option value="hamburguesas">Hamburguesas</option>
+              <option value="combos">Combos</option>
+              <option value="sandwiches">Sándwiches</option>
+              <option value="papas" selected>Papas</option>
+              <option value="bebidas">Bebidas</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Menú -->
+    <div class="section" id="tab-menu">
+      <div class="section-title">Productos del menú</div>
+
+      <!-- Botones agregar -->
+      <div class="add-row">
+        <button class="add-row-btn" onclick="showAddForm('cat')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nueva categoría
+        </button>
+        <button class="add-row-btn" onclick="showAddForm('prod')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo producto
+        </button>
+      </div>
+
+      <!-- Formulario nueva categoría -->
+      <div id="addCatForm" class="add-form" style="display:none">
+        <div class="add-form-title">Nueva categoría</div>
+        <div class="field">
+          <label>Nombre</label>
+          <input type="text" id="new-cat-name" placeholder="Ej: Postres">
+        </div>
+        <div class="field">
+          <label>Subtítulo</label>
+          <input type="text" id="new-cat-tagline" placeholder="Ej: El toque dulce">
+        </div>
+        <div class="add-form-actions">
+          <button class="add-form-submit" onclick="addCategory()">Agregar categoría</button>
+          <button class="add-form-cancel" onclick="hideAddForms()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Formulario nuevo producto -->
+      <div id="addProdForm" class="add-form" style="display:none">
+        <div class="add-form-title">Nuevo producto</div>
+        <div class="field-row">
+          <div class="field" style="flex:0 0 80px">
+            <label>Emoji</label>
+            <input type="text" id="new-prod-icon" placeholder="🍔" maxlength="4" style="text-align:center;font-size:20px">
+          </div>
+          <div class="field">
+            <label>Nombre</label>
+            <input type="text" id="new-prod-name" placeholder="Nombre del producto">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Categoría</label>
+            <select id="new-prod-cat"></select>
+          </div>
+          <div class="field">
+            <label>Precio ($)</label>
+            <input type="number" id="new-prod-price" placeholder="5000">
+          </div>
+        </div>
+        <div class="field">
+          <label>Descripción</label>
+          <textarea id="new-prod-desc" placeholder="Descripción del producto..."></textarea>
+        </div>
+        <div class="add-form-actions">
+          <button class="add-form-submit" onclick="addProduct()">Agregar producto</button>
+          <button class="add-form-cancel" onclick="hideAddForms()">Cancelar</button>
+        </div>
+      </div>
+
+      <div id="menuEditor"></div>
+    </div>
+
+    <!-- TAB: PIN -->
+    <div class="section" id="tab-pin">
+      <div class="section-title">Cambiar PIN de acceso</div>
+      <div class="card">
+        <div class="field">
+          <label>PIN actual</label>
+          <input type="password" id="pin-current" placeholder="••••" maxlength="4" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>PIN nuevo</label>
+          <input type="password" id="pin-new" placeholder="••••" maxlength="4" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Repetir PIN nuevo</label>
+          <input type="password" id="pin-confirm" placeholder="••••" maxlength="4" inputmode="numeric">
+        </div>
+        <div class="field-hint" id="pin-msg" style="height:16px"></div>
+      </div>
+      <div style="padding:4px 0">
+        <button class="save-btn" style="width:100%;margin-top:8px" onclick="changePin()">Cambiar PIN</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Save bar -->
+  <div class="save-bar">
+    <button class="preview-btn" onclick="window.open('perroburger_propuesta.html')">Ver menú</button>
+    <button class="save-btn" onclick="saveAll()">Guardar cambios</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config API ────────────────────────────────────────────────────────────────
+
+const API    = 'api.php';
+const SECRET = '159'; // debe coincidir con api.php
+
+let serverData = {
+  config: {}, promo: {}, menu: {},
+  custom_categories: [], custom_products: [], photos: {}
+};
+
+async function fetchData() {
+  try {
+    const res = await fetch(API);
+    if (!res.ok) throw new Error();
+    const d = await res.json();
+    serverData = {
+      config:            d.config            || {},
+      promo:             d.promo             || {},
+      menu:              d.menu              || {},
+      custom_categories: d.custom_categories || [],
+      custom_products:   d.custom_products   || [],
+      photos:            d.photos            || {},
+    };
+  } catch(e) {
+    showToast('No se pudo conectar con el servidor');
+  }
+}
+
+async function postToServer() {
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: SECRET, action: 'save', data: serverData }),
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    return true;
+  } catch(e) {
+    showToast('Error al guardar en el servidor');
+    return false;
+  }
+}
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+
+const DEFAULT_PIN = '1234';
+let pinInput = '';
+
+function getPin() { return localStorage.getItem('pb_pin') || DEFAULT_PIN; }
+
+function pinKey(k) {
+  if (pinInput.length >= 4) return;
+  pinInput += k;
+  updatePinDots();
+  if (pinInput.length === 4) {
+    setTimeout(checkPin, 120);
+  }
+}
+function pinDel() {
+  pinInput = pinInput.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+}
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('d' + i).classList.toggle('filled', i < pinInput.length);
+  }
+}
+function checkPin() {
+  if (pinInput === getPin()) {
+    document.getElementById('pinScreen').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('pinError').textContent = 'PIN incorrecto, intentá de nuevo';
+    pinInput = '';
+    updatePinDots();
+  }
+}
+function logout() {
+  pinInput = '';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('pinScreen').style.display = 'flex';
+}
+function changePin() {
+  const cur     = document.getElementById('pin-current').value;
+  const nw      = document.getElementById('pin-new').value;
+  const confirm = document.getElementById('pin-confirm').value;
+  const msg     = document.getElementById('pin-msg');
+  if (cur !== getPin())      { msg.style.color = '#e05555'; msg.textContent = 'El PIN actual es incorrecto.'; return; }
+  if (nw.length < 4)         { msg.style.color = '#e05555'; msg.textContent = 'El PIN debe tener 4 dígitos.'; return; }
+  if (nw !== confirm)        { msg.style.color = '#e05555'; msg.textContent = 'Los PINs no coinciden.'; return; }
+  localStorage.setItem('pb_pin', nw);
+  msg.style.color = '#4caf7d';
+  msg.textContent = 'PIN actualizado correctamente.';
+  document.getElementById('pin-current').value = '';
+  document.getElementById('pin-new').value = '';
+  document.getElementById('pin-confirm').value = '';
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const ids = ['local','promo','menu','pin'];
+    t.classList.toggle('active', ids[i] === id);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// ── Data defaults ─────────────────────────────────────────────────────────────
+
+const MENU_DATA = [
+  { id:'h-clasica',  category:'hamburguesas', name:'La Clásica',          icon:'🍔', price:7800,  description:'Medallón 180g jugoso, cheddar fundido, lechuga crocante, tomate, pickles y mayonesa de la casa sobre pan de papa tostado.' },
+  { id:'h-doble',    category:'hamburguesas', name:'Doble Cheddar',        icon:'🧀', price:9900,  description:'Dos medallones smashed, doble cheddar derretido, cebolla caramelizada y salsa Perro sobre pan brioche.' },
+  { id:'h-bacon',    category:'hamburguesas', name:'Bacon Bomb',           icon:'🥓', price:9200,  description:'Medallón 180g, doble bacon ahumado, cheddar, cebolla morada en aros y BBQ casera.' },
+  { id:'h-picante',  category:'hamburguesas', name:'La Picante',           icon:'🌶️', price:8800,  description:'Medallón a la plancha, queso pepper jack, jalapeños frescos, cebolla crispy y salsa chipotle ahumada.' },
+  { id:'h-veggie',   category:'hamburguesas', name:'Veggie de Garbanzo',   icon:'🥑', price:7500,  description:'Medallón casero de garbanzo y remolacha, palta, rúcula fresca, tomate y mayo de ajo asado.' },
+  { id:'h-crispy',   category:'hamburguesas', name:'Crispy Chicken',       icon:'🍗', price:8400,  description:'Pechuga de pollo rebozada y crocante, coleslaw fresco, pickles encurtidos y mayo de ajo.' },
+  { id:'c-clasico',  category:'combos',       name:'Combo Clásico',        icon:'🍟', price:12500, description:'Cualquier hamburguesa simple + papas medianas + bebida 500ml.' },
+  { id:'c-doble',    category:'combos',       name:'Combo Doble',          icon:'🍔', price:15800, description:'Doble Cheddar o Bacon Bomb + papas grandes + bebida 500ml.' },
+  { id:'s-completo', category:'sandwiches',   name:'Lomito Completo',      icon:'🥩', price:9500,  description:'Lomo de res a la plancha, jamón cocido, queso fundido, lechuga, tomate, huevo y mayonesa.' },
+  { id:'s-arabe',    category:'sandwiches',   name:'Lomito Árabe',         icon:'🫓', price:7900,  description:'Lomo de res, lechuga, tomate y cebolla morada en pan árabe casero con salsa de yogur.' },
+  { id:'s-mila',     category:'sandwiches',   name:'Sánd. de Milanesa',    icon:'🥪', price:7200,  description:'Milanesa de ternera fresca, lechuga, tomate y mayonesa en pan francés crocante.' },
+  { id:'p-clasicas', category:'papas',        name:'Papas Clásicas',       icon:'🍟', price:4200,  description:'Papas bastón doradas con sal marina y nuestra mezcla secreta de especias.' },
+  { id:'p-cheddar',  category:'papas',        name:'Papas Cheddar & Bacon',icon:'🧀', price:6500,  description:'Papas bañadas en cheddar fundido casero y bacon ahumado picado.' },
+  { id:'p-jalapeno', category:'papas',        name:'Papas Cheddar Jalapeño',icon:'🌶️',price:6200,  description:'Papas con cheddar y jalapeños frescos en rodajas.' },
+  { id:'p-aros',     category:'papas',        name:'Aros de Cebolla',      icon:'🧅', price:4800,  description:'Aros de cebolla rebozados, crocantes por fuera y dulces por dentro.' },
+  { id:'b-coca',     category:'bebidas',      name:'Coca-Cola 500ml',      icon:'🥤', price:1800,  description:'Coca-Cola bien fría, 500ml.' },
+  { id:'b-sprite',   category:'bebidas',      name:'Sprite 500ml',         icon:'🥤', price:1800,  description:'Sprite 500ml, frescura cítrica.' },
+  { id:'b-agua',     category:'bebidas',      name:'Agua 500ml',           icon:'💧', price:1200,  description:'Agua sin gas, 500ml.' },
+  { id:'b-limonada', category:'bebidas',      name:'Limonada de la Casa',  icon:'🍋', price:2500,  description:'Limonada exprimida en el momento con menta y jengibre.' },
+  { id:'b-cerveza',  category:'bebidas',      name:'Cerveza Artesanal 500ml',icon:'🍺',price:3200, description:'Rubia o roja, de cervecería local. Heladita.' },
+];
+
+const CAT_LABELS = {
+  hamburguesas: 'Hamburguesas', combos: 'Combos',
+  sandwiches: 'Sándwiches', papas: 'Papas', bebidas: 'Bebidas'
+};
+
+// ── Load & save ───────────────────────────────────────────────────────────────
+
+async function loadAll() {
+  await fetchData();
+  loadConfig();
+  loadPromo();
+  loadMenuEditor();
+}
+
+function loadConfig() {
+  const c = serverData.config;
+  document.getElementById('cfg-name').value      = c.name      || 'Perro Burguer';
+  document.getElementById('cfg-tagline').value   = c.tagline   || 'Hamburguesería artesanal · Salta';
+  document.getElementById('cfg-whatsapp').value  = c.whatsapp  || '543875290535';
+  document.getElementById('cfg-address').value   = c.address   || 'Av. del Bicentenario 1234, Salta Capital';
+  document.getElementById('cfg-hours').value     = c.hours     || 'Mar a Dom · 19:30 a 00:30';
+  document.getElementById('cfg-delivery').value  = c.delivery  || '1500';
+  document.getElementById('cfg-minorder').value  = c.minorder  || '5000';
+  document.getElementById('cfg-cbu').value       = c.cbu       || '0000003100012345678901';
+  document.getElementById('cfg-cbuname').value   = c.cbuname   || 'Perro Burguer S.R.L.';
+}
+
+function loadPromo() {
+  const p  = serverData.promo;
+  const on = p.enabled !== false;
+  document.getElementById('promoToggle').classList.toggle('on', on);
+  document.getElementById('promo-emoji').value      = p.emoji      || '🔥';
+  document.getElementById('promo-label').value      = p.label      || 'Promo de hoy';
+  document.getElementById('promo-title').value      = p.title      || '2x1 en papas';
+  document.getElementById('promo-desc').value       = p.desc       || 'Pedí cualquier porción de papas y la segunda te sale gratis. Válido solo hoy, hasta agotar stock.';
+  document.getElementById('promo-price').value      = p.price      || '$ 4.200';
+  document.getElementById('promo-pricelabel').value = p.pricelabel || 'pagás una, llevás dos';
+  document.getElementById('promo-cta').value        = p.cta        || 'Ver papas';
+  document.getElementById('promo-ctasection').value = p.ctasection || 'papas';
+}
+
+function productRowHtml(p, name, price, desc, photos, isCustom = false) {
+  const hasPhoto = !!photos[p.id];
+  const bgStyle  = hasPhoto ? `style="background-image:url('${photos[p.id]}')"` : '';
+  const delBtn   = isCustom
+    ? `<button class="product-row-del" onclick="event.stopPropagation();deleteCustomProduct('${p.id}')" title="Eliminar">✕</button>`
+    : '';
+  const badge = isCustom ? `<span class="custom-badge">nuevo</span>` : '';
+  return `
+    <div class="product-row" id="row-${p.id}">
+      <div class="product-row-header" onclick="toggleRow('${p.id}')">
+        <span class="product-row-icon">${p.icon}</span>
+        <div class="product-row-info">
+          <div class="product-row-name">${name}${badge}</div>
+          <div class="product-row-price">$ ${Number(price).toLocaleString('es-AR')}</div>
+        </div>
+        ${delBtn}
+        <span class="product-row-chevron">▼</span>
+      </div>
+      <div class="product-row-body">
+        <div class="field">
+          <label>Foto del producto</label>
+          <div class="img-upload ${hasPhoto ? 'has-img' : ''}" id="imgbox-${p.id}" ${bgStyle}
+               onclick="triggerImgUpload('${p.id}')">
+            <div class="img-upload-label" ${hasPhoto ? 'style="display:none"' : ''}>
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Subir foto</span>
+            </div>
+            <div class="img-upload-overlay">
+              <button class="img-act-btn" onclick="event.stopPropagation();triggerImgUpload('${p.id}')">Cambiar</button>
+              <button class="img-act-btn del" onclick="event.stopPropagation();removePhoto('${p.id}')">Eliminar foto</button>
+            </div>
+          </div>
+          <input type="file" id="imgfile-${p.id}" accept="image/*" style="display:none"
+                 onchange="handleImgUpload('${p.id}', this)">
+        </div>
+        <div class="field">
+          <label>Nombre</label>
+          <input type="text" id="mn-${p.id}-name" value="${name.replace(/"/g,'&quot;')}">
+        </div>
+        <div class="field">
+          <label>Precio ($)</label>
+          <input type="number" id="mn-${p.id}-price" value="${price}">
+        </div>
+        <div class="field">
+          <label>Descripción</label>
+          <textarea id="mn-${p.id}-desc">${desc}</textarea>
+        </div>
+      </div>
+    </div>`;
+}
+
+function loadMenuEditor() {
+  const saved       = serverData.menu              || {};
+  const photos      = serverData.photos            || {};
+  const customProds = serverData.custom_products   || [];
+  const customCats  = serverData.custom_categories || [];
+  const el = document.getElementById('menuEditor');
+  let html = '';
+  let lastCat = '';
+
+  // Built-in products
+  MENU_DATA.forEach(p => {
+    if (p.category !== lastCat) {
+      lastCat = p.category;
+      html += `<div class="cat-label">${CAT_LABELS[p.category]}</div>`;
+    }
+    const s = saved[p.id] || {};
+    html += productRowHtml(p, s.name ?? p.name, s.price ?? p.price, s.desc ?? p.description, photos, false);
+  });
+
+  // Custom categories and their products
+  customCats.forEach(cat => {
+    const catProds = customProds.filter(p => p.category === cat.id);
+    html += `
+      <div class="cat-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${cat.name} <span class="custom-badge">nueva</span></span>
+        <button class="product-row-del" onclick="deleteCustomCategory('${cat.id}')" title="Eliminar categoría" style="margin-bottom:0">✕</button>
+      </div>`;
+    catProds.forEach(p => {
+      const s = saved[p.id] || {};
+      html += productRowHtml(p, s.name ?? p.name, s.price ?? p.price, s.desc ?? p.description, photos, true);
+    });
+  });
+
+  // Custom products in built-in categories
+  const customInBuiltin = customProds.filter(p => !customCats.find(c => c.id === p.category));
+  if (customInBuiltin.length) {
+    const byBuiltinCat = {};
+    customInBuiltin.forEach(p => {
+      if (!byBuiltinCat[p.category]) byBuiltinCat[p.category] = [];
+      byBuiltinCat[p.category].push(p);
+    });
+    Object.entries(byBuiltinCat).forEach(([catId, prods]) => {
+      html += `<div class="cat-label">${CAT_LABELS[catId] || catId} — <span style="color:var(--cream3);text-transform:none;font-size:9px;letter-spacing:0">productos nuevos</span></div>`;
+      prods.forEach(p => {
+        const s = saved[p.id] || {};
+        html += productRowHtml(p, s.name ?? p.name, s.price ?? p.price, s.desc ?? p.description, photos, true);
+      });
+    });
+  }
+
+  el.innerHTML = html;
+}
+
+function toggleRow(id) {
+  document.getElementById('row-' + id).classList.toggle('open');
+}
+
+// ── Add / delete product & category ──────────────────────────────────────────
+
+function getAllCategories() {
+  const custom = serverData.custom_categories || [];
+  return [
+    ...Object.entries(CAT_LABELS).map(([id, name]) => ({ id, name })),
+    ...custom,
+  ];
+}
+
+function showAddForm(type) {
+  hideAddForms();
+  if (type === 'cat') {
+    document.getElementById('addCatForm').style.display = 'block';
+    document.getElementById('new-cat-name').focus();
+  } else {
+    // Populate category select
+    const sel = document.getElementById('new-prod-cat');
+    sel.innerHTML = getAllCategories().map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    document.getElementById('addProdForm').style.display = 'block';
+    document.getElementById('new-prod-name').focus();
+  }
+}
+
+function hideAddForms() {
+  document.getElementById('addCatForm').style.display = 'none';
+  document.getElementById('addProdForm').style.display = 'none';
+}
+
+async function addCategory() {
+  const name    = document.getElementById('new-cat-name').value.trim();
+  const tagline = document.getElementById('new-cat-tagline').value.trim();
+  if (!name) { showToast('Ingresá un nombre para la categoría'); return; }
+  serverData.custom_categories.push({ id: 'cat-' + Date.now(), name, tagline: tagline || name });
+  document.getElementById('new-cat-name').value    = '';
+  document.getElementById('new-cat-tagline').value = '';
+  hideAddForms();
+  if (await postToServer()) {
+    loadMenuEditor();
+    showToast(`Categoría "${name}" agregada`);
+  }
+}
+
+async function addProduct() {
+  const icon  = document.getElementById('new-prod-icon').value.trim()  || '🍽️';
+  const name  = document.getElementById('new-prod-name').value.trim();
+  const cat   = document.getElementById('new-prod-cat').value;
+  const price = parseInt(document.getElementById('new-prod-price').value) || 0;
+  const desc  = document.getElementById('new-prod-desc').value.trim();
+  if (!name)  { showToast('Ingresá un nombre para el producto'); return; }
+  if (!price) { showToast('Ingresá un precio válido'); return; }
+  serverData.custom_products.push({ id: 'custom-' + Date.now(), category: cat, icon, name, price, description: desc });
+  document.getElementById('new-prod-icon').value  = '';
+  document.getElementById('new-prod-name').value  = '';
+  document.getElementById('new-prod-price').value = '';
+  document.getElementById('new-prod-desc').value  = '';
+  hideAddForms();
+  if (await postToServer()) {
+    loadMenuEditor();
+    showToast(`Producto "${name}" agregado`);
+  }
+}
+
+async function deleteCustomProduct(id) {
+  if (!confirm('¿Eliminás este producto?')) return;
+  serverData.custom_products = serverData.custom_products.filter(p => p.id !== id);
+  delete serverData.photos[id];
+  await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ key: SECRET, action: 'delete_photo', id }) });
+  if (await postToServer()) { loadMenuEditor(); showToast('Producto eliminado'); }
+}
+
+async function deleteCustomCategory(id) {
+  const hasProds = serverData.custom_products.some(p => p.category === id);
+  if (hasProds && !confirm('Esta categoría tiene productos. ¿Eliminás todo?')) return;
+  serverData.custom_categories = serverData.custom_categories.filter(c => c.id !== id);
+  serverData.custom_products   = serverData.custom_products.filter(p => p.category !== id);
+  if (await postToServer()) { loadMenuEditor(); showToast('Categoría eliminada'); }
+}
+
+// ── Photos ────────────────────────────────────────────────────────────────────
+
+function triggerImgUpload(id) {
+  document.getElementById('imgfile-' + id).click();
+}
+
+function handleImgUpload(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  compressToBase64(file, async imageData => {
+    showToast('Subiendo foto...');
+    try {
+      const res  = await fetch(API, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ key: SECRET, action: 'upload_photo', id, imageData }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      serverData.photos[id] = data.url;
+      updatePhotoPreview(id, data.url);
+      showToast('Foto guardada correctamente');
+    } catch(e) {
+      showToast('Error al subir la foto');
+    }
+  });
+}
+
+function compressToBase64(file, callback) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 700;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+      else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updatePhotoPreview(id, url) {
+  const box = document.getElementById('imgbox-' + id);
+  if (!box) return;
+  box.style.backgroundImage = `url('${url}')`;
+  box.classList.add('has-img');
+  const label = box.querySelector('.img-upload-label');
+  if (label) label.style.display = 'none';
+}
+
+async function removePhoto(id) {
+  try {
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: SECRET, action: 'delete_photo', id }),
+    });
+    delete serverData.photos[id];
+    const box = document.getElementById('imgbox-' + id);
+    if (box) {
+      box.style.backgroundImage = '';
+      box.classList.remove('has-img');
+      const label = box.querySelector('.img-upload-label');
+      if (label) label.style.display = '';
+    }
+    showToast('Foto eliminada');
+  } catch(e) {
+    showToast('Error al eliminar la foto');
+  }
+}
+
+function togglePromo() {
+  document.getElementById('promoToggle').classList.toggle('on');
+}
+
+async function saveAll() {
+  // Config
+  serverData.config = {
+    name:     document.getElementById('cfg-name').value.trim(),
+    tagline:  document.getElementById('cfg-tagline').value.trim(),
+    whatsapp: document.getElementById('cfg-whatsapp').value.trim(),
+    address:  document.getElementById('cfg-address').value.trim(),
+    hours:    document.getElementById('cfg-hours').value.trim(),
+    delivery: parseInt(document.getElementById('cfg-delivery').value) || 1500,
+    minorder: parseInt(document.getElementById('cfg-minorder').value) || 5000,
+    cbu:      document.getElementById('cfg-cbu').value.trim(),
+    cbuname:  document.getElementById('cfg-cbuname').value.trim(),
+  };
+
+  // Promo
+  serverData.promo = {
+    enabled:    document.getElementById('promoToggle').classList.contains('on'),
+    emoji:      document.getElementById('promo-emoji').value.trim(),
+    label:      document.getElementById('promo-label').value.trim(),
+    title:      document.getElementById('promo-title').value.trim(),
+    desc:       document.getElementById('promo-desc').value.trim(),
+    price:      document.getElementById('promo-price').value.trim(),
+    pricelabel: document.getElementById('promo-pricelabel').value.trim(),
+    cta:        document.getElementById('promo-cta').value.trim(),
+    ctasection: document.getElementById('promo-ctasection').value,
+  };
+
+  // Menu overrides
+  const menuSaved = {};
+  const allItems  = [...MENU_DATA, ...(serverData.custom_products || [])];
+  allItems.forEach(p => {
+    const nameEl  = document.getElementById(`mn-${p.id}-name`);
+    const priceEl = document.getElementById(`mn-${p.id}-price`);
+    const descEl  = document.getElementById(`mn-${p.id}-desc`);
+    if (!nameEl) return;
+    const name  = nameEl.value.trim();
+    const price = parseInt(priceEl.value) || p.price;
+    const desc  = descEl.value.trim();
+    if (name !== p.name || price !== p.price || desc !== (p.description || '')) {
+      menuSaved[p.id] = { name, price, desc };
+    }
+    const row = document.getElementById('row-' + p.id);
+    if (row) {
+      row.querySelector('.product-row-name').firstChild.textContent = name;
+      row.querySelector('.product-row-price').textContent = '$ ' + price.toLocaleString('es-AR');
+    }
+  });
+  serverData.menu = menuSaved;
+
+  if (await postToServer()) showToast('Cambios guardados correctamente');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
