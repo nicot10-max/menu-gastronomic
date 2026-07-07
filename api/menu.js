@@ -37,7 +37,7 @@ export default async function handler(req, res) {
       const data = (await dbGet(KV_KEY)) || {};
       return res.status(200).json(data);
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: e.message, kvUrl: KV_URL ? 'present' : 'missing', kvToken: KV_TOKEN ? 'present' : 'missing' });
     }
   }
 
