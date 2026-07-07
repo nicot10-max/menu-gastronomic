@@ -1,11 +1,17 @@
 const SECRET = '159';
-const KV_KEY = 'pb_data';
-const KV_URL   = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+const KV_KEY  = 'pb_data';
+
+function getEnv() {
+  const url   = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) throw new Error('KV env vars missing');
+  return { url, token };
+}
 
 async function dbGet(key) {
-  const res = await fetch(`${KV_URL}/get/${key}`, {
-    headers: { Authorization: `Bearer ${KV_TOKEN}` }
+  const { url, token } = getEnv();
+  const res = await fetch(`${url}/get/${key}`, {
+    headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error(`GET ${res.status}`);
   const { result } = await res.json();
@@ -14,10 +20,11 @@ async function dbGet(key) {
 }
 
 async function dbSet(key, value) {
-  const res = await fetch(`${KV_URL}/pipeline`, {
+  const { url, token } = getEnv();
+  const res = await fetch(`${url}/pipeline`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${KV_TOKEN}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify([['SET', key, JSON.stringify(value)]])
@@ -25,7 +32,7 @@ async function dbSet(key, value) {
   if (!res.ok) throw new Error(`SET ${res.status}`);
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -37,7 +44,7 @@ export default async function handler(req, res) {
       const data = (await dbGet(KV_KEY)) || {};
       return res.status(200).json(data);
     } catch (e) {
-      return res.status(500).json({ error: e.message, kvUrl: KV_URL ? 'present' : 'missing', kvToken: KV_TOKEN ? 'present' : 'missing' });
+      return res.status(500).json({ error: e.message });
     }
   }
 
@@ -45,7 +52,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = null; } }
+
   if (!body || body.key !== SECRET) {
     return res.status(403).json({ error: 'No autorizado' });
   }
@@ -59,7 +68,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'upload_photo') {
-      const id = (body.id || 'photo').replace(/[^a-z0-9\-_]/g, '');
+      const id   = (body.id || 'photo').replace(/[^a-z0-9\-_]/g, '');
       const data = (await dbGet(KV_KEY)) || {};
       if (!data.photos) data.photos = {};
       data.photos[id] = body.imageData || '';
@@ -68,7 +77,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'delete_photo') {
-      const id = (body.id || '').replace(/[^a-z0-9\-_]/g, '');
+      const id   = (body.id || '').replace(/[^a-z0-9\-_]/g, '');
       const data = (await dbGet(KV_KEY)) || {};
       if (data.photos) delete data.photos[id];
       await dbSet(KV_KEY, data);
@@ -79,4 +88,4 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
-}
+};
