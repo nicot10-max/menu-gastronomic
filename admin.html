@@ -72,7 +72,8 @@
     .pin-btn:hover  { background: var(--bg4); }
     .pin-btn:active { transform: scale(0.94); }
     .pin-btn.del    { font-size: 18px; color: var(--cream2); }
-    .pin-btn.zero   { grid-column: 2; }
+    .pin-btn.ok     { font-size: 20px; color: var(--orange); border-color: rgba(242,138,76,.35); }
+    .pin-btn:disabled { opacity: .5; cursor: default; }
     .pin-error {
       font-size: 13px; color: var(--red);
       height: 18px; text-align: center;
@@ -394,12 +395,7 @@
     <div class="pin-title">Panel de administración</div>
     <div class="pin-sub">Ingresá tu PIN para continuar</div>
   </div>
-  <div class="pin-dots" id="pinDots">
-    <div class="pin-dot" id="d0"></div>
-    <div class="pin-dot" id="d1"></div>
-    <div class="pin-dot" id="d2"></div>
-    <div class="pin-dot" id="d3"></div>
-  </div>
+  <div class="pin-dots" id="pinDots"></div>
   <div class="pin-error" id="pinError"></div>
   <div class="pin-pad">
     <button class="pin-btn" onclick="pinKey('1')">1</button>
@@ -411,8 +407,9 @@
     <button class="pin-btn" onclick="pinKey('7')">7</button>
     <button class="pin-btn" onclick="pinKey('8')">8</button>
     <button class="pin-btn" onclick="pinKey('9')">9</button>
-    <button class="pin-btn zero" onclick="pinKey('0')">0</button>
     <button class="pin-btn del" onclick="pinDel()">⌫</button>
+    <button class="pin-btn" onclick="pinKey('0')">0</button>
+    <button class="pin-btn ok" onclick="submitPin()">✓</button>
   </div>
 </div>
 
@@ -669,8 +666,36 @@
 <script>
 // ── Config API ────────────────────────────────────────────────────────────────
 
-const API    = 'api/menu';
-const SECRET = '159'; // debe coincidir con api.php
+const API = 'api/menu';
+
+// El token de sesión lo emite el servidor tras validar el PIN. Vive sólo en esta
+// pestaña: no hay ninguna credencial escrita en este archivo.
+let authToken = sessionStorage.getItem('pb_token') || '';
+function setToken(t)  { authToken = t; sessionStorage.setItem('pb_token', t); }
+function clearToken() { authToken = ''; sessionStorage.removeItem('pb_token'); }
+
+// POST autenticado. Si el servidor rechaza la sesión, vuelve a la pantalla de PIN.
+async function authFetch(payload) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 401) {
+    logout();
+    throw new Error('Sesión expirada. Volvé a ingresar el PIN.');
+  }
+  return res;
+}
+
+// ── Escapado ──────────────────────────────────────────────────────────────────
+// Todo lo que viene del servidor pasa por acá antes de entrar al HTML.
+const ESC_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+function esc(s)   { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+// Para ids que se interpolan dentro de onclick="...": sólo caracteres inertes.
+function escId(s) { return String(s ?? '').replace(/[^a-zA-Z0-9_-]/g, ''); }
+// Sólo aceptamos imágenes embebidas; cualquier otra cosa no se muestra.
+function safePhoto(u) { return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(u ?? '')) ? u : ''; }
 
 let serverData = {
   config: {}, promo: {}, menu: {},
@@ -697,34 +722,26 @@ async function fetchData() {
 
 async function postToServer() {
   try {
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: SECRET, action: 'save', data: serverData }),
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error);
+    const res = await authFetch({ action: 'save', data: serverData });
+    const d   = await res.json();
+    if (!res.ok || d.error) throw new Error(d.error || 'Error al guardar');
     return true;
   } catch(e) {
-    showToast('Error al guardar en el servidor');
+    showToast(e.message || 'Error al guardar en el servidor');
     return false;
   }
 }
 
 // ── PIN ───────────────────────────────────────────────────────────────────────
 
-const DEFAULT_PIN = '1234';
+const MIN_PIN = 4;
+const MAX_PIN = 12;
 let pinInput = '';
 
-function getPin() { return localStorage.getItem('pb_pin') || DEFAULT_PIN; }
-
 function pinKey(k) {
-  if (pinInput.length >= 4) return;
+  if (pinInput.length >= MAX_PIN) return;
   pinInput += k;
   updatePinDots();
-  if (pinInput.length === 4) {
-    setTimeout(checkPin, 120);
-  }
 }
 function pinDel() {
   pinInput = pinInput.slice(0, -1);
@@ -732,42 +749,70 @@ function pinDel() {
   document.getElementById('pinError').textContent = '';
 }
 function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    document.getElementById('d' + i).classList.toggle('filled', i < pinInput.length);
-  }
+  const total = Math.max(MIN_PIN, pinInput.length);
+  document.getElementById('pinDots').innerHTML =
+    Array.from({ length: total }, (_, i) =>
+      `<div class="pin-dot${i < pinInput.length ? ' filled' : ''}"></div>`).join('');
 }
-function checkPin() {
-  if (pinInput === getPin()) {
+
+async function submitPin() {
+  const err = document.getElementById('pinError');
+  if (pinInput.length < MIN_PIN) {
+    err.textContent = `El PIN tiene al menos ${MIN_PIN} dígitos`;
+    return;
+  }
+  err.textContent = 'Verificando...';
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'login', password: pinInput }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'No se pudo ingresar');
+    setToken(d.token);
+    pinInput = '';
+    updatePinDots();
+    err.textContent = '';
     document.getElementById('pinScreen').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'block';
     loadAll();
-  } else {
-    document.getElementById('pinError').textContent = 'PIN incorrecto, intentá de nuevo';
+  } catch (e) {
+    err.textContent = e.message;
     pinInput = '';
     updatePinDots();
   }
 }
+
 function logout() {
+  clearToken();
   pinInput = '';
   updatePinDots();
   document.getElementById('pinError').textContent = '';
   document.getElementById('adminPanel').style.display = 'none';
   document.getElementById('pinScreen').style.display = 'flex';
 }
-function changePin() {
+
+async function changePin() {
   const cur     = document.getElementById('pin-current').value;
   const nw      = document.getElementById('pin-new').value;
   const confirm = document.getElementById('pin-confirm').value;
   const msg     = document.getElementById('pin-msg');
-  if (cur !== getPin())      { msg.style.color = '#e05555'; msg.textContent = 'El PIN actual es incorrecto.'; return; }
-  if (nw.length < 4)         { msg.style.color = '#e05555'; msg.textContent = 'El PIN debe tener 4 dígitos.'; return; }
-  if (nw !== confirm)        { msg.style.color = '#e05555'; msg.textContent = 'Los PINs no coinciden.'; return; }
-  localStorage.setItem('pb_pin', nw);
-  msg.style.color = '#4caf7d';
-  msg.textContent = 'PIN actualizado correctamente.';
-  document.getElementById('pin-current').value = '';
-  document.getElementById('pin-new').value = '';
-  document.getElementById('pin-confirm').value = '';
+  if (!/^\d{4,12}$/.test(nw)) { msg.style.color = '#e05555'; msg.textContent = 'El PIN debe tener entre 4 y 12 dígitos.'; return; }
+  if (nw !== confirm)         { msg.style.color = '#e05555'; msg.textContent = 'Los PINs no coinciden.'; return; }
+  try {
+    const res = await authFetch({ action: 'change_pin', current: cur, nuevo: nw });
+    const d   = await res.json();
+    if (!res.ok) throw new Error(d.error || 'No se pudo cambiar el PIN');
+    msg.style.color = '#4caf7d';
+    msg.textContent = 'PIN actualizado correctamente.';
+    document.getElementById('pin-current').value = '';
+    document.getElementById('pin-new').value = '';
+    document.getElementById('pin-confirm').value = '';
+  } catch (e) {
+    msg.style.color = '#e05555';
+    msg.textContent = e.message;
+  }
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -848,18 +893,20 @@ function loadPromo() {
 }
 
 function productRowHtml(p, name, price, desc, photos, isCustom = false) {
-  const hasPhoto = !!photos[p.id];
-  const bgStyle  = hasPhoto ? `style="background-image:url('${photos[p.id]}')"` : '';
+  const pid      = escId(p.id);
+  const photo    = safePhoto(photos[p.id]);
+  const hasPhoto = !!photo;
+  const bgStyle  = hasPhoto ? `style="background-image:url('${esc(photo)}')"` : '';
   const delBtn   = isCustom
-    ? `<button class="product-row-del" onclick="event.stopPropagation();deleteCustomProduct('${p.id}')" title="Eliminar">✕</button>`
+    ? `<button class="product-row-del" onclick="event.stopPropagation();deleteCustomProduct('${pid}')" title="Eliminar">✕</button>`
     : '';
   const badge = isCustom ? `<span class="custom-badge">nuevo</span>` : '';
   return `
-    <div class="product-row" id="row-${p.id}">
-      <div class="product-row-header" onclick="toggleRow('${p.id}')">
-        <span class="product-row-icon">${p.icon}</span>
+    <div class="product-row" id="row-${pid}">
+      <div class="product-row-header" onclick="toggleRow('${pid}')">
+        <span class="product-row-icon">${esc(p.icon)}</span>
         <div class="product-row-info">
-          <div class="product-row-name">${name}${badge}</div>
+          <div class="product-row-name">${esc(name)}${badge}</div>
           <div class="product-row-price">$ ${Number(price).toLocaleString('es-AR')}</div>
         </div>
         ${delBtn}
@@ -868,31 +915,31 @@ function productRowHtml(p, name, price, desc, photos, isCustom = false) {
       <div class="product-row-body">
         <div class="field">
           <label>Foto del producto</label>
-          <div class="img-upload ${hasPhoto ? 'has-img' : ''}" id="imgbox-${p.id}" ${bgStyle}
-               onclick="triggerImgUpload('${p.id}')">
+          <div class="img-upload ${hasPhoto ? 'has-img' : ''}" id="imgbox-${pid}" ${bgStyle}
+               onclick="triggerImgUpload('${pid}')">
             <div class="img-upload-label" ${hasPhoto ? 'style="display:none"' : ''}>
               <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span>Subir foto</span>
             </div>
             <div class="img-upload-overlay">
-              <button class="img-act-btn" onclick="event.stopPropagation();triggerImgUpload('${p.id}')">Cambiar</button>
-              <button class="img-act-btn del" onclick="event.stopPropagation();removePhoto('${p.id}')">Eliminar foto</button>
+              <button class="img-act-btn" onclick="event.stopPropagation();triggerImgUpload('${pid}')">Cambiar</button>
+              <button class="img-act-btn del" onclick="event.stopPropagation();removePhoto('${pid}')">Eliminar foto</button>
             </div>
           </div>
-          <input type="file" id="imgfile-${p.id}" accept="image/*" style="display:none"
-                 onchange="handleImgUpload('${p.id}', this)">
+          <input type="file" id="imgfile-${pid}" accept="image/*" style="display:none"
+                 onchange="handleImgUpload('${pid}', this)">
         </div>
         <div class="field">
           <label>Nombre</label>
-          <input type="text" id="mn-${p.id}-name" value="${name.replace(/"/g,'&quot;')}">
+          <input type="text" id="mn-${pid}-name" value="${esc(name)}">
         </div>
         <div class="field">
           <label>Precio ($)</label>
-          <input type="number" id="mn-${p.id}-price" value="${price}">
+          <input type="number" id="mn-${pid}-price" value="${Number(price) || 0}">
         </div>
         <div class="field">
           <label>Descripción</label>
-          <textarea id="mn-${p.id}-desc">${desc}</textarea>
+          <textarea id="mn-${pid}-desc">${esc(desc)}</textarea>
         </div>
       </div>
     </div>`;
@@ -911,7 +958,7 @@ function loadMenuEditor() {
   MENU_DATA.forEach(p => {
     if (p.category !== lastCat) {
       lastCat = p.category;
-      html += `<div class="cat-label">${CAT_LABELS[p.category]}</div>`;
+      html += `<div class="cat-label">${esc(CAT_LABELS[p.category])}</div>`;
     }
     const s = saved[p.id] || {};
     html += productRowHtml(p, s.name ?? p.name, s.price ?? p.price, s.desc ?? p.description, photos, false);
@@ -922,8 +969,8 @@ function loadMenuEditor() {
     const catProds = customProds.filter(p => p.category === cat.id);
     html += `
       <div class="cat-label" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${cat.name} <span class="custom-badge">nueva</span></span>
-        <button class="product-row-del" onclick="deleteCustomCategory('${cat.id}')" title="Eliminar categoría" style="margin-bottom:0">✕</button>
+        <span>${esc(cat.name)} <span class="custom-badge">nueva</span></span>
+        <button class="product-row-del" onclick="deleteCustomCategory('${escId(cat.id)}')" title="Eliminar categoría" style="margin-bottom:0">✕</button>
       </div>`;
     catProds.forEach(p => {
       const s = saved[p.id] || {};
@@ -940,7 +987,7 @@ function loadMenuEditor() {
       byBuiltinCat[p.category].push(p);
     });
     Object.entries(byBuiltinCat).forEach(([catId, prods]) => {
-      html += `<div class="cat-label">${CAT_LABELS[catId] || catId} — <span style="color:var(--cream3);text-transform:none;font-size:9px;letter-spacing:0">productos nuevos</span></div>`;
+      html += `<div class="cat-label">${esc(CAT_LABELS[catId] || catId)} — <span style="color:var(--cream3);text-transform:none;font-size:9px;letter-spacing:0">productos nuevos</span></div>`;
       prods.forEach(p => {
         const s = saved[p.id] || {};
         html += productRowHtml(p, s.name ?? p.name, s.price ?? p.price, s.desc ?? p.description, photos, true);
@@ -973,7 +1020,7 @@ function showAddForm(type) {
   } else {
     // Populate category select
     const sel = document.getElementById('new-prod-cat');
-    sel.innerHTML = getAllCategories().map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    sel.innerHTML = getAllCategories().map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
     document.getElementById('addProdForm').style.display = 'block';
     document.getElementById('new-prod-name').focus();
   }
@@ -1022,8 +1069,7 @@ async function deleteCustomProduct(id) {
   if (!confirm('¿Eliminás este producto?')) return;
   serverData.custom_products = serverData.custom_products.filter(p => p.id !== id);
   delete serverData.photos[id];
-  await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ key: SECRET, action: 'delete_photo', id }) });
+  try { await authFetch({ action: 'delete_photo', id }); } catch(e) { showToast(e.message); return; }
   if (await postToServer()) { loadMenuEditor(); showToast('Producto eliminado'); }
 }
 
@@ -1048,18 +1094,14 @@ function handleImgUpload(id, input) {
   compressToBase64(file, async imageData => {
     showToast('Subiendo foto...');
     try {
-      const res  = await fetch(API, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ key: SECRET, action: 'upload_photo', id, imageData }),
-      });
+      const res  = await authFetch({ action: 'upload_photo', id, imageData });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (!res.ok || data.error) throw new Error(data.error || 'Error al subir la foto');
       serverData.photos[id] = data.url;
       updatePhotoPreview(id, data.url);
       showToast('Foto guardada correctamente');
     } catch(e) {
-      showToast('Error al subir la foto');
+      showToast(e.message || 'Error al subir la foto');
     }
   });
 }
@@ -1094,11 +1136,7 @@ function updatePhotoPreview(id, url) {
 
 async function removePhoto(id) {
   try {
-    await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: SECRET, action: 'delete_photo', id }),
-    });
+    await authFetch({ action: 'delete_photo', id });
     delete serverData.photos[id];
     const box = document.getElementById('imgbox-' + id);
     if (box) {
@@ -1178,6 +1216,16 @@ function showToast(msg) {
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+updatePinDots();
+if (authToken) {
+  // Sesión abierta en esta pestaña. Si el servidor la rechaza, authFetch vuelve al PIN.
+  document.getElementById('pinScreen').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  loadAll();
 }
 </script>
 </body>

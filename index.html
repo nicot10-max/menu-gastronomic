@@ -1290,6 +1290,17 @@ let current = null;
 let qty = 1;
 let selections = {};
 
+// ── Escapado ──────────────────────────────────────────────────────────────────
+// El menú se arma con datos que edita el panel de admin, así que nada entra al
+// HTML sin escapar.
+
+const ESC_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+function esc(s)   { return String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]); }
+// Para ids interpolados dentro de onclick="...": sólo caracteres inertes.
+function escId(s) { return String(s ?? '').replace(/[^a-zA-Z0-9_-]/g, ''); }
+// Sólo imágenes embebidas; cualquier otro esquema (javascript:, etc.) se descarta.
+function safePhoto(u) { return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(String(u ?? '')) ? u : ''; }
+
 // ── Format ────────────────────────────────────────────────────────────────────
 
 const fmt = n => '$ ' + n.toLocaleString('es-AR');
@@ -1297,14 +1308,14 @@ const fmt = n => '$ ' + n.toLocaleString('es-AR');
 function tagHtml(tag) {
   const map = { destacado:['tag-destacado','Destacado'], veggie:['tag-veggie','Veggie'], picante:['tag-picante','🌶 Picante'] };
   const [c, l] = map[tag] || ['tag-sin-tacc', tag];
-  return `<span class="tag ${c}">${l}</span>`;
+  return `<span class="tag ${c}">${esc(l)}</span>`;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
 function renderCats() {
   document.getElementById('catNav').innerHTML = CATEGORIES.map((c, i) =>
-    `<button class="cat-pill${i===0?' active':''}" data-cat="${c.id}" onclick="goToSection('${c.id}')">${c.label}</button>`
+    `<button class="cat-pill${i===0?' active':''}" data-cat="${esc(c.id)}" onclick="goToSection('${escId(c.id)}')">${esc(c.label)}</button>`
   ).join('');
 }
 
@@ -1313,29 +1324,30 @@ function renderMenu() {
     const items = MENU.filter(p => p.category === cat.id);
     const num = String(i + 1).padStart(2, '0');
     return `
-      <section id="sec-${cat.id}" data-cat="${cat.id}">
+      <section id="sec-${escId(cat.id)}" data-cat="${esc(cat.id)}">
         <div class="section-head">
           <div>
-            <div class="section-label">${num} — ${cat.tagline}</div>
-            <div class="section-name">${cat.label}</div>
+            <div class="section-label">${num} — ${esc(cat.tagline)}</div>
+            <div class="section-name">${esc(cat.label)}</div>
           </div>
         </div>
         <div class="cards-list">
           ${items.map(p => {
-            const photo = (window._PB_PHOTOS || {})[p.id];
+            const pid   = escId(p.id);
+            const photo = safePhoto((window._PB_PHOTOS || {})[p.id]);
             const photoHtml = photo
-              ? `<img class="card-photo-img" src="${photo}" alt="${p.name}" loading="lazy">`
-              : `<div class="card-photo-placeholder"><div class="card-photo-icon">${p.icon}</div></div>`;
+              ? `<img class="card-photo-img" src="${esc(photo)}" alt="${esc(p.name)}" loading="lazy">`
+              : `<div class="card-photo-placeholder"><div class="card-photo-icon">${esc(p.icon)}</div></div>`;
             return `
-            <div class="product-card" onclick="openModal('${p.id}')">
+            <div class="product-card" onclick="openModal('${pid}')">
               <div class="card-photo">
                 ${photoHtml}
-                <button class="card-photo-add" onclick="event.stopPropagation();openModal('${p.id}')">+</button>
+                <button class="card-photo-add" onclick="event.stopPropagation();openModal('${pid}')">+</button>
               </div>
               <div class="card-body">
                 ${p.tags?.length ? `<div class="card-tags">${p.tags.map(tagHtml).join('')}</div>` : ''}
-                <div class="card-name">${p.name}</div>
-                <div class="card-desc">${p.description}</div>
+                <div class="card-name">${esc(p.name)}</div>
+                <div class="card-desc">${esc(p.description)}</div>
                 <div class="card-price-row">
                   <div>
                     <div class="card-price">${fmt(p.price)}</div>
@@ -1383,7 +1395,7 @@ function openModal(id) {
   const modalPhoto = document.getElementById('modalPhoto');
   const existingImg = modalPhoto.querySelector('.modal-photo-img');
   if (existingImg) existingImg.remove();
-  const photo = (window._PB_PHOTOS || {})[current.id];
+  const photo = safePhoto((window._PB_PHOTOS || {})[current.id]);
   if (photo) {
     const img = document.createElement('img');
     img.className = 'modal-photo-img';
@@ -1608,8 +1620,8 @@ function renderDrawer() {
     <div class="cart-item">
       <div class="ci-qty">${item.qty}</div>
       <div class="ci-info">
-        <div class="ci-name">${item.product.name}</div>
-        ${item.mods.length ? `<div class="ci-mods">${item.mods.join(' · ')}</div>` : ''}
+        <div class="ci-name">${esc(item.product.name)}</div>
+        ${item.mods.length ? `<div class="ci-mods">${esc(item.mods.join(' · '))}</div>` : ''}
       </div>
       <div class="ci-price">${fmt(item.total)}</div>
       <button class="ci-remove" onclick="removeItem(${item.id})">✕</button>
@@ -1851,26 +1863,41 @@ async function applyConfig() {
   MENU.forEach(item => {
     const s = saved[item.id];
     if (!s) return;
-    if (s.name)  item.name        = s.name;
-    if (s.price) item.price       = s.price;
-    if (s.desc)  item.description = s.desc;
+    if (s.name)  item.name        = String(s.name);
+    if (s.price) item.price       = Number(s.price) || item.price;
+    if (s.desc)  item.description = String(s.desc);
   });
 
-  // Custom categories y productos
+  // Custom categories y productos.
+  // Los ids se filtran a caracteres inertes y nunca se copian campos que el
+  // render trate como código (customizations sólo existe en productos fijos).
   (d.custom_categories || []).forEach(cat => {
-    if (!CATEGORIES.find(c => c.id === cat.id))
-      CATEGORIES.push({ id: cat.id, label: cat.name, tagline: cat.tagline || cat.name });
+    const id = escId(cat.id);
+    if (!id || CATEGORIES.find(c => c.id === id)) return;
+    CATEGORIES.push({ id, label: String(cat.name ?? ''), tagline: String(cat.tagline || cat.name || '') });
   });
   (d.custom_products || []).forEach(prod => {
-    if (!MENU.find(m => m.id === prod.id)) {
-      const s = saved[prod.id] || {};
-      MENU.push({ ...prod, name: s.name||prod.name, price: s.price||prod.price,
-                  description: s.desc||prod.description||'', tags: [] });
-    }
+    const id = escId(prod.id);
+    if (!id || MENU.find(m => m.id === id)) return;
+    const s = saved[id] || {};
+    MENU.push({
+      id,
+      category:    escId(prod.category),
+      name:        String(s.name ?? prod.name ?? ''),
+      icon:        String(prod.icon ?? '🍔'),
+      price:       Number(s.price ?? prod.price) || 0,
+      description: String(s.desc ?? prod.description ?? ''),
+      tags:        [],
+    });
   });
 
-  // Photos (ahora son URLs de servidor)
-  window._PB_PHOTOS = d.photos || {};
+  // Fotos: sólo las que son imágenes embebidas válidas
+  const photos = d.photos || {};
+  window._PB_PHOTOS = {};
+  Object.keys(photos).forEach(k => {
+    const url = safePhoto(photos[k]);
+    if (url) window._PB_PHOTOS[escId(k)] = url;
+  });
 
   return p.enabled !== false;
 }
