@@ -134,6 +134,143 @@
       font-size: 14px; flex-shrink: 0;
     }
 
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(160deg, #131316 0%, var(--bg) 55%, #17120f 100%);
+      padding: 64px 24px 72px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      min-height: 380px;
+    }
+    @media (min-width: 700px) { .hero { min-height: 460px; padding: 88px 32px 96px; } }
+
+    /* Rejilla y detalles de fondo */
+    .hero-grid { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .hero-line {
+      stroke: var(--orange); stroke-width: .5; opacity: 0;
+      stroke-dasharray: 5 5; stroke-dashoffset: 1000;
+      animation: hero-grid-draw 2s ease-out forwards;
+    }
+    @keyframes hero-grid-draw {
+      0%   { stroke-dashoffset: 1000; opacity: 0; }
+      50%  { opacity: .22; }
+      100% { stroke-dashoffset: 0; opacity: .1; }
+    }
+    .hero-dot { fill: var(--orange); opacity: 0; animation: hero-pulse 3s ease-in-out infinite; }
+    @keyframes hero-pulse {
+      0%, 100% { opacity: .12; transform: scale(1); }
+      50%      { opacity: .38; transform: scale(1.12); }
+    }
+
+    /* Partículas flotantes */
+    .hero-particle {
+      position: absolute; width: 3px; height: 3px;
+      background: var(--orange); border-radius: 50%;
+      opacity: 0; pointer-events: none;
+      animation: hero-float 5s ease-in-out infinite;
+    }
+    @keyframes hero-float {
+      0%, 100% { transform: translate(0, 0);      opacity: .18; }
+      25%      { transform: translate(6px, -12px); opacity: .55; }
+      50%      { transform: translate(-4px, -6px); opacity: .32; }
+      75%      { transform: translate(8px, -18px); opacity: .7;  }
+    }
+
+    /* Marcos en las esquinas */
+    .hero-corner {
+      position: absolute; width: 34px; height: 34px;
+      border: 1px solid rgba(242,138,76,.28);
+      opacity: 0; animation: hero-word-appear 1s ease-out forwards;
+      pointer-events: none;
+    }
+    .hero-corner.tl { top: 18px; left: 18px;  border-right: none; border-bottom: none; }
+    .hero-corner.tr { top: 18px; right: 18px; border-left: none;  border-bottom: none; }
+    .hero-corner.bl { bottom: 18px; left: 18px;  border-right: none; border-top: none; }
+    .hero-corner.br { bottom: 18px; right: 18px; border-left: none;  border-top: none; }
+
+    /* Aparición de palabras: el efecto principal */
+    .hero-content { position: relative; z-index: 2; max-width: 760px; }
+    .word {
+      display: inline-block; opacity: 0;
+      transition: color .3s ease, transform .3s ease, text-shadow .3s ease;
+    }
+    .word.on { animation: hero-word-appear .8s ease-out forwards; }
+    @keyframes hero-word-appear {
+      0%   { opacity: 0;  transform: translateY(28px) scale(.86); filter: blur(10px); }
+      50%  { opacity: .8; transform: translateY(8px)  scale(.96); filter: blur(2px);  }
+      100% { opacity: 1;  transform: translateY(0)    scale(1);   filter: blur(0);    }
+    }
+    .hero-eyebrow {
+      font-size: 11px; font-weight: 500;
+      color: var(--orange); text-transform: uppercase;
+      letter-spacing: .22em;
+    }
+    @media (min-width: 700px) { .hero-eyebrow { font-size: 12px; } }
+    .hero-title {
+      margin-top: 18px;
+      font-size: 40px; font-weight: 300; line-height: 1.08;
+      letter-spacing: -.02em; color: var(--cream);
+    }
+    @media (min-width: 700px) { .hero-title { font-size: 68px; } }
+    .hero-title .word:hover { color: var(--orange); transform: translateY(-2px); }
+    .hero-sub {
+      margin-top: 18px;
+      font-size: 15px; font-weight: 300; line-height: 1.6;
+      color: var(--cream2);
+    }
+    @media (min-width: 700px) { .hero-sub { font-size: 18px; } }
+
+    .hero-rule {
+      width: 0; height: 1px; margin: 26px auto 0;
+      background: linear-gradient(90deg, transparent, var(--orange), transparent);
+      animation: hero-rule-grow 1.6s ease-out forwards; animation-delay: 1.9s;
+    }
+    @keyframes hero-rule-grow { to { width: 160px; } }
+
+    .hero-cta {
+      margin-top: 26px; opacity: 0;
+      animation: hero-word-appear .9s ease-out forwards; animation-delay: 2.2s;
+      display: inline-flex; align-items: center; gap: 9px;
+      background: var(--orange); color: #1a0e00;
+      border: none; border-radius: 999px;
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 600;
+      padding: 13px 26px; cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .hero-cta:hover  { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(242,138,76,.28); }
+    .hero-cta:active { transform: translateY(0); }
+
+    /* Resplandor que sigue al cursor (sólo con mouse) */
+    .hero-glow {
+      position: absolute; width: 340px; height: 340px;
+      border-radius: 50%; pointer-events: none; z-index: 1;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(242,138,76,.10), rgba(242,138,76,.04), transparent 70%);
+      filter: blur(48px);
+      opacity: 0;
+      transition: left 70ms linear, top 70ms linear, opacity 300ms ease-out;
+      will-change: left, top, opacity;
+    }
+    @media (hover: none) { .hero-glow { display: none; } }
+
+    /* Quien pidió menos movimiento ve el hero quieto, no vacío. */
+    @media (prefers-reduced-motion: reduce) {
+      .hero-line, .hero-dot, .hero-particle, .hero-corner,
+      .word, .word.on, .hero-rule, .hero-cta {
+        animation: none !important;
+        opacity: 1 !important;
+        filter: none !important;
+        transform: none !important;
+        stroke-dashoffset: 0 !important;
+      }
+      .hero-rule { width: 160px; }
+      .hero-glow { display: none; }
+    }
+
     /* ── Category nav ── */
     .cat-nav {
       position: sticky; top: 64px; z-index: 90;
@@ -1037,6 +1174,52 @@
   </div>
 </div>
 
+<!-- Hero -->
+<section class="hero" id="hero">
+  <svg class="hero-grid" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <pattern id="heroGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+        <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(242,138,76,.06)" stroke-width=".5"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#heroGrid)"/>
+    <line x1="0" y1="22%" x2="100%" y2="22%" class="hero-line" style="animation-delay:.4s"/>
+    <line x1="0" y1="78%" x2="100%" y2="78%" class="hero-line" style="animation-delay:.8s"/>
+    <line x1="18%" y1="0" x2="18%" y2="100%" class="hero-line" style="animation-delay:1.2s"/>
+    <line x1="82%" y1="0" x2="82%" y2="100%" class="hero-line" style="animation-delay:1.6s"/>
+    <circle cx="18%" cy="22%" r="2" class="hero-dot" style="animation-delay:2.4s"/>
+    <circle cx="82%" cy="22%" r="2" class="hero-dot" style="animation-delay:2.6s"/>
+    <circle cx="18%" cy="78%" r="2" class="hero-dot" style="animation-delay:2.8s"/>
+    <circle cx="82%" cy="78%" r="2" class="hero-dot" style="animation-delay:3s"/>
+  </svg>
+
+  <span class="hero-corner tl" style="animation-delay:2.6s"></span>
+  <span class="hero-corner tr" style="animation-delay:2.7s"></span>
+  <span class="hero-corner bl" style="animation-delay:2.8s"></span>
+  <span class="hero-corner br" style="animation-delay:2.9s"></span>
+
+  <span class="hero-particle" style="top:28%;left:12%;animation-delay:.6s"></span>
+  <span class="hero-particle" style="top:64%;left:86%;animation-delay:1.2s"></span>
+  <span class="hero-particle" style="top:44%;left:8%; animation-delay:1.8s"></span>
+  <span class="hero-particle" style="top:74%;left:91%;animation-delay:2.4s"></span>
+  <span class="hero-particle" style="top:18%;left:74%;animation-delay:3s"></span>
+
+  <div class="hero-glow" id="heroGlow"></div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow" id="heroEyebrow" data-stagger="0" data-step="140">Hamburguesería artesanal · Salta</p>
+    <h1 class="hero-title" id="heroTitle" data-stagger="500" data-step="160">Perro Burguer</h1>
+    <p class="hero-sub" id="heroSub" data-stagger="1100" data-step="90">Carne fresca, pan de papa y salsas de la casa. Hecho al momento.</p>
+    <div class="hero-rule"></div>
+    <button class="hero-cta" onclick="goToSection(CATEGORIES[0].id)">
+      Ver el menú
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+      </svg>
+    </button>
+  </div>
+</section>
+
 <!-- Category nav -->
 <nav class="cat-nav" id="catNav"></nav>
 
@@ -1383,6 +1566,52 @@ function goToSection(id) {
   const el = document.getElementById('sec-' + id);
   if (!el) return;
   window.scrollTo({top: el.getBoundingClientRect().top + scrollY - 130, behavior:'smooth'});
+}
+
+// ── Hero ──────────────────────────────────────────────────────────────────────
+
+// Parte el texto en palabras para animarlas de a una. Usa textContent, así que
+// lo que venga del panel de admin entra como texto y nunca como HTML.
+function splitIntoWords(el, accentFirst = false) {
+  const text = (el.textContent || '').trim();
+  if (!text) return [];
+  const frag  = document.createDocumentFragment();
+  const words = text.split(/\s+/);
+  const spans = words.map((w, i) => {
+    const s = document.createElement('span');
+    s.className = 'word';
+    s.textContent = w;
+    if (accentFirst && i === 0) s.style.color = 'var(--orange)';
+    frag.appendChild(s);
+    // Espacio real entre palabras: así el texto se copia y se lee bien.
+    if (i < words.length - 1) frag.appendChild(document.createTextNode(' '));
+    return s;
+  });
+  el.textContent = '';
+  el.appendChild(frag);
+  return spans;
+}
+
+function animateHero() {
+  ['heroEyebrow', 'heroTitle', 'heroSub'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const base = Number(el.dataset.stagger) || 0;
+    const step = Number(el.dataset.step) || 120;
+    splitIntoWords(el, id === 'heroTitle')
+      .forEach((s, i) => setTimeout(() => s.classList.add('on'), base + i * step));
+  });
+
+  const hero = document.getElementById('hero');
+  const glow = document.getElementById('heroGlow');
+  if (!hero || !glow) return;
+  hero.addEventListener('mousemove', e => {
+    const r = hero.getBoundingClientRect();
+    glow.style.left    = `${e.clientX - r.left}px`;
+    glow.style.top     = `${e.clientY - r.top}px`;
+    glow.style.opacity = '1';
+  });
+  hero.addEventListener('mouseleave', () => { glow.style.opacity = '0'; });
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
@@ -1842,6 +2071,10 @@ async function applyConfig() {
   document.querySelectorAll('.ticker-address').forEach(el  => el.textContent = address);
   document.querySelectorAll('.ticker-delivery').forEach(el => el.textContent = deliveryText);
 
+  // Hero (se parte en palabras después, en animateHero)
+  if (c.name)    document.getElementById('heroTitle').textContent   = c.name;
+  if (c.tagline) document.getElementById('heroEyebrow').textContent = c.tagline;
+
   // Checkout
   if (c.address) document.getElementById('pickupAddr').textContent  = c.address;
   if (c.hours)   document.getElementById('pickupHours').textContent = c.hours;
@@ -1906,6 +2139,7 @@ async function applyConfig() {
 applyConfig().then(promoEnabled => {
   renderCats();
   renderMenu();
+  animateHero();
   if (promoEnabled) setTimeout(openPromo, 900);
 });
 </script>
